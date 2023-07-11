@@ -312,7 +312,7 @@ pub(crate) fn build_bibliography(
             let mut authors_str = tm.get("author").unwrap_or(&"N/A".to_owned()).to_string();
             authors_str.retain(|c| c != '\n');
 
-            debug!("{:?}", &tm);
+            debug!("Bibliography element: {:?}", &tm);
             let (pub_year, pub_month) = extract_date(&tm);
             let and_split = Regex::new(r"\band\b").expect("Broken regex");
             let splits = and_split.split(&authors_str);
@@ -555,6 +555,11 @@ impl<'a> Placeholder<'a> {
                         .as_str()
                         .to_string()
                 } else {
+                    warn!(
+                        "Unable to find bib reference for {:?} in {:?}",
+                        cite,
+                        source_file.to_str()
+                    );
                     format!("\\[Unknown bib ref: {cite}\\]")
                 }
             }
