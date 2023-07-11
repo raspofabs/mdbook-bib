@@ -142,7 +142,7 @@ impl Bibiography {
         book.for_each_mut(|section: &mut BookItem| {
             if let BookItem::Chapter(ref mut ch) = *section {
                 if let Some(ref chapter_path) = ch.path {
-                    info!(
+                    debug!(
                         "Replacing placeholders: {{#cite ...}} and @@citation in {}",
                         chapter_path.as_path().display()
                     );
@@ -312,7 +312,7 @@ pub(crate) fn build_bibliography(
             let mut authors_str = tm.get("author").unwrap_or(&"N/A".to_owned()).to_string();
             authors_str.retain(|c| c != '\n');
 
-            info!("{:?}", &tm);
+            debug!("{:?}", &tm);
             let (pub_year, pub_month) = extract_date(&tm);
             let and_split = Regex::new(r"\band\b").expect("Broken regex");
             let splits = and_split.split(&authors_str);
