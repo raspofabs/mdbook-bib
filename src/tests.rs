@@ -28,6 +28,8 @@ use mdbook::book::Chapter;
 
 static EXAMPLE_CSS_TEMPLATE: &str = include_str!("../manual/src/render/my_style.css");
 static EXAMPLE_HB_TEMPLATE: &str = include_str!("../manual/src/render/my_references.hbs");
+static EXAMPLE_HB_TEMPLATE_WITH_PUBLISHER: &str =
+    include_str!("../manual/src/render/my_references.hbs");
 
 const DUMMY_BIB_SRC: &str = r#"
 @misc {fps,
@@ -283,7 +285,8 @@ fn find_only_citation_placeholders() {
     // When no recognized placeholders are found, they are ignored
     let plhs = find_placeholders(DUMMY_TEXT_WITH_2_UNKNOWN_PLACEHOLDERS);
     items = 0;
-    for _ in plhs {
+    //for _ in plhs {
+    if plhs.into_iter().next().is_some() {
         panic!("Only Cite should be recognized as placeholder type!!!");
     }
     assert_eq!(items, 0);
@@ -445,6 +448,97 @@ fn check_date_extractions_from_biblatex() {
     assert_eq!(month, "N/A");
 }
 
+#[test]
+fn check_publisher_info_rendering() {
+    // Check config with default values is returned when an empty config is passed in a toml table!!!
+    let t: Table = Table::new();
+    match Config::build_from(Some(&t), PathBuf::new()) {
+        Ok(config) => {
+            println!("{config:?}");
+            assert_eq!(config.title, "Bibliography");
+            assert_eq!(config.bibliography, None);
+            assert_eq!(config.zotero_uid, None);
+            assert!(config.cited_only);
+            let default_tpl = format!("\n\n{DEFAULT_HB_TEMPLATE}\n\n");
+            assert_eq!(config.bib_hb_html, default_tpl);
+            let default_css = format!("<style>{DEFAULT_CSS_TEMPLATE}</style>\n\n");
+            assert_eq!(config.css_html, default_css);
+            let default_js =
+                format!("<script type=\"text/javascript\">\n{DEFAULT_JS_TEMPLATE}\n</script>\n\n",);
+            assert_eq!(config.js_html, default_js);
+        }
+        Err(_) => panic!("there's supposed to be always a config!!!"),
+    }
+
+    // Check config attributes are processed (those that are not specified are ignored)!!!
+    let mut t: Table = Table::new();
+
+    t.insert(
+        "bibliography".to_string(),
+        Value::String("biblio.bib".to_string()),
+    );
+    t.insert(
+        "zotero-uid".to_string(),
+        Value::String("123456".to_string()),
+    );
+    t.insert("title".to_string(), Value::String("References".to_string()));
+    t.insert("render-bib".to_string(), Value::String("all".to_string()));
+    t.insert(
+        "not-specified-config-attr".to_string(),
+        Value::String("uhg???".to_string()),
+    );
+    match Config::build_from(Some(&t), PathBuf::new()) {
+        Ok(config) => {
+            println!("{config:?}");
+            assert_eq!(config.title, "References");
+            assert_eq!(config.bibliography, Some("biblio.bib"));
+            assert_eq!(config.zotero_uid, Some("123456"));
+            assert!(!config.cited_only);
+        }
+        Err(_) => panic!("there's supposed to be always a config!!!"),
+    }
+
+    // Intentionally add a failure specifying a non-existing value for render-bib
+    let mut t: Table = Table::new();
+    t.insert(
+        "render-bib".to_string(),
+        Value::String("non-existent!".to_string()),
+    );
+    match Config::build_from(Some(&t), PathBuf::new()) {
+        Ok(_) => panic!("there's supposed to be a failure in the config!!!"),
+        Err(_) => println!("Yayyyyy! A failure that is supposed to happen!"),
+    }
+
+    // Test adhoc template and style!!! (We check the template and style provided for the project doc/manual)
+    let mut t: Table = Table::new();
+    t.insert(
+        "hb-tpl".to_string(),
+        Value::String("render/my_references.hbs".to_string()),
+    );
+    t.insert(
+        "css".to_string(),
+        Value::String("render/my_style.css".to_string()),
+    );
+    // TODO No adhoc js tested at this time. Add one if added in the future to the project manual.
+    let mut manual_src_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manual_src_path.push("manual/src/");
+    match Config::build_from(Some(&t), manual_src_path) {
+        Ok(config) => {
+            println!("{config:?}");
+            let adhoc_tpl = format!("\n\n{EXAMPLE_HB_TEMPLATE_WITH_PUBLISHER}\n\n");
+            assert_eq!(config.bib_hb_html, adhoc_tpl);
+            let adhoc_css = format!("<style>{EXAMPLE_CSS_TEMPLATE}</style>\n\n");
+            assert_eq!(config.css_html, adhoc_css);
+            let default_js =
+                format!("<script type=\"text/javascript\">\n{DEFAULT_JS_TEMPLATE}\n</script>\n\n",);
+            assert_eq!(config.js_html, default_js);
+        }
+        Err(e) => panic!(
+            "there's supposed to be always a config!!!\n {:?}",
+            e.root_cause()
+        ),
+    }
+}
 pub struct NotFound;
 
 /// Check if a string is present in the file contents

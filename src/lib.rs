@@ -106,8 +106,8 @@ impl Bibiography {
                     let val: &str = item
                         .1
                         .authors
-                        .get(0)
-                        .map(|vec| vec.get(0).unwrap_or(&empty))
+                        .first()
+                        .map(|vec| vec.first().unwrap_or(&empty))
                         .unwrap_or(&empty);
                     val
                 });
@@ -191,6 +191,8 @@ pub struct BibItem {
     pub title: String,
     /// The article's author/s.
     pub authors: Vec<Vec<String>>,
+    /// Publisher
+    pub publisher: String,
     /// Pub month.
     pub pub_month: String,
     /// Pub year.
@@ -205,10 +207,12 @@ pub struct BibItem {
 
 impl BibItem {
     /// Create a new bib item with the provided content.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         citation_key: &str,
         title: String,
         authors: Vec<Vec<String>>,
+        publisher: String,
         pub_month: String,
         pub_year: String,
         summary: String,
@@ -218,6 +222,7 @@ impl BibItem {
             citation_key: citation_key.to_string(),
             title,
             authors,
+            publisher,
             pub_month,
             pub_year,
             summary,
@@ -313,6 +318,7 @@ pub(crate) fn build_bibliography(
             authors_str.retain(|c| c != '\n');
 
             debug!("Bibliography element: {:?}", &tm);
+            let publisher = tm.get("publisher").unwrap_or(&"N/A".to_owned()).to_string();
             let (pub_year, pub_month) = extract_date(&tm);
             let and_split = Regex::new(r"\band\b").expect("Broken regex");
             let splits = and_split.split(&authors_str);
@@ -331,6 +337,7 @@ pub(crate) fn build_bibliography(
                         .unwrap_or(&"Not Found".to_owned())
                         .to_string(),
                     authors,
+                    publisher,
                     pub_month,
                     pub_year,
                     summary: tm.get("abstract").unwrap_or(&"N/A".to_owned()).to_string(),
